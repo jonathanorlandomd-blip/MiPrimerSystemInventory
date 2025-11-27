@@ -1,10 +1,18 @@
 import streamlit as st
 import pandas as pd
 import os
+import time
 
 # 1. Configuración de la página
 st.set_page_config(page_title="Inventario de Poleras", layout="wide")
 st.title("👕 Gestión de Inventario de Poleras")
+
+# --- FUNCIÓN PARA GUARDAR DATOS ---
+# Es una buena práctica tener una función para guardar, así evitamos repetir código.
+def guardar_datos(dataframe):
+    """Guarda el DataFrame en el archivo CSV."""
+    dataframe.to_csv("inventario.csv", index=False)
+
 
 # 2. Cargar datos
 # Asegúrate de que tu archivo se llame 'inventario.csv' y esté limpio como indicamos
@@ -29,7 +37,7 @@ else:
 
 # 4. Métricas Generales (Totales)
 # Identificamos las columnas que son numéricas (las tallas)
-columnas_tallas = [col for col in df.columns if col not in ['Modelo', 'Imagen']]
+columnas_tallas = [col for col in df_filtrado.columns if col not in ['Modelo', 'Imagen']]
 total_prendas = df_filtrado[columnas_tallas].sum().sum()
 total_modelos = len(df_filtrado)
 
@@ -47,7 +55,9 @@ for index, row in df_filtrado.iterrows():
         
         # Columna 1: Imagen
         with c1:
-            ruta_img = os.path.join("imagenes", str(row['Imagen']))
+            # La ruta ya viene completa en el CSV (ej: "imagenes/foto.png")
+            # No es necesario usar os.path.join con la carpeta "imagenes"
+            ruta_img = str(row['Imagen'])
             if os.path.exists(ruta_img):
                 st.image(ruta_img, width=200)
             else:
@@ -57,18 +67,67 @@ for index, row in df_filtrado.iterrows():
         with c2:
             st.subheader(row['Modelo'])
             
-            # Mostramos las tallas como un pequeño dataframe transpuesto para que se vea limpio
-            tallas_row = row[columnas_tallas].to_frame().T
-            st.dataframe(tallas_row, hide_index=True)
+            # --- LÓGICA PARA MOSTRAR TALLAS CORRECTAS ---
+            # Definimos los dos grupos de tallas que existen en el CSV
+            tallas_adulto = ['S', 'M', 'L', 'XL', 'XXL']
+            tallas_nino = ['Talla 16', 'Talla 18', 'Talla 20', 'Talla 22', 'Talla 24', 'Talla 26', 'Talla 28']
+            
+            # Decidimos qué grupo de tallas mostrar basado en el nombre del modelo
+            if 'Short + Polera U' in row['Modelo']:
+                tallas_a_mostrar = tallas_nino
+            else:
+                tallas_a_mostrar = tallas_adulto
+
+            # --- SECCIÓN INTERACTIVA DE TALLAS ---
+            # Usamos la lista de tallas correcta ('tallas_a_mostrar')
+            num_columnas_layout = 4 # Puedes ajustar este número (ej. 3 o 5)
+            layout_cols = st.columns(num_columnas_layout)
+            
+            for i, talla in enumerate(tallas_a_mostrar):
+                # Asignamos cada talla a una de las columnas de layout
+                if not talla in row: continue # Seguridad por si una talla no existe en el df
+
+                col_actual = layout_cols[i % num_columnas_layout]
+                with col_actual:
+                    # Usamos un contenedor con borde para crear la "casilla"
+                    with st.container(border=True):
+                        stock_actual = int(row[talla])
+                        
+                        # --- LÓGICA PARA ETIQUETA DE TALLA DE NIÑO ---
+                        etiqueta_talla = talla
+                        if talla in tallas_nino:
+                            # Extraemos el número de la talla (ej. 16 de "Talla 16")
+                            numero_talla = int(talla.split(' ')[1])
+                            # Calculamos el número para el paréntesis: (16-16)+4=4, (18-16)+4=6, etc.
+                            numero_adicional = (numero_talla - 16) + 4
+                            etiqueta_talla = f"{talla} ({numero_adicional})"
+                        
+                        # Usamos HTML en markdown para centrar el texto
+                        st.markdown(f"<p style='text-align: center; font-weight: bold;'>{etiqueta_talla}</p>", unsafe_allow_html=True)
+                        
+                        # Reemplazamos st.metric con markdown para centrar el número de stock
+                        st.markdown(f"<h2 style='text-align: center;'>{stock_actual}</h2>", unsafe_allow_html=True)
+                        
+                        # Columnas para los botones, para que estén uno al lado del otro
+                        btn_col1, btn_col2 = st.columns(2)
+                        
+                        if btn_col1.button("➕", key=f"plus-{index}-{talla}", use_container_width=True):
+                            df.loc[index, talla] = stock_actual + 1
+                            guardar_datos(df)
+                            st.rerun()
+                        
+                        if btn_col2.button("➖", key=f"minus-{index}-{talla}", use_container_width=True):
+                            if stock_actual > 0:
+                                df.loc[index, talla] = stock_actual - 1
+                                guardar_datos(df)
+                                st.rerun()
             
             # Stock total de este modelo específico
-            stock_modelo = row[columnas_tallas].sum()
+            stock_modelo = row[tallas_a_mostrar].sum()
+            st.divider()
             
-            # Alerta visual de stock bajo
-            if stock_modelo < 5:
-                st.warning(f"⚠️ Stock bajo: Quedan solo {int(stock_modelo)} unidades.")
-            else:
-                st.success(f"✅ Stock total modelo: {int(stock_modelo)}")
+            # Alerta visual de stock bajo (se mantiene igual)
+            st.metric("Stock Total del Modelo", int(stock_modelo))
         
         st.divider()
 

@@ -13,6 +13,42 @@ def guardar_datos(dataframe):
     """Guarda el DataFrame en el archivo CSV."""
     dataframe.to_csv("inventario.csv", index=False)
 
+# --- FUNCIÓN DE COMPONENTE PARA TARJETA DE TALLA ---
+# Refactorizamos la lógica de una tarjeta de talla a su propia función.
+# Esto crea un ámbito aislado para cada talla, previniendo bugs de renderizado en móvil.
+def mostrar_tarjeta_talla(df, index, row, talla, es_nino):
+    """Muestra una tarjeta interactiva para una talla específica."""
+    stock_actual = int(row[talla])
+    
+    etiqueta_talla = talla
+    if es_nino:
+        numero_talla = int(talla.split(' ')[1])
+        etiqueta_talla = f"Talla {numero_talla}"
+
+    # SOLUCIÓN: Añadir un espacio no rompible para evitar la traducción/reemplazo no deseado en móvil.
+    # Esto fuerza a que la cadena sea única (ej. "M&nbsp;") y no sea malinterpretada por el renderizador.
+    etiqueta_talla_display = f"{etiqueta_talla}&nbsp;"
+    
+    # Usamos un contenedor con borde para la "casilla"
+    with st.container(border=True):
+        # Usamos HTML para centrar y dar estilo
+        st.markdown(f"<p style='text-align: center; font-weight: bold;'><code>{etiqueta_talla_display}</code></p>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='text-align: center;'>{stock_actual}</h2>", unsafe_allow_html=True)
+        
+        # Botones en columnas
+        btn_col1, btn_col2 = st.columns(2)
+        
+        if btn_col1.button("➕", key=f"plus-{index}-{talla}", use_container_width=True):
+            df.loc[index, talla] = stock_actual + 1
+            guardar_datos(df)
+            st.rerun()
+        
+        if btn_col2.button("➖", key=f"minus-{index}-{talla}", use_container_width=True):
+            if stock_actual > 0:
+                df.loc[index, talla] = stock_actual - 1
+                guardar_datos(df)
+                st.rerun()
+
 
 # 2. Cargar datos
 # Asegúrate de que tu archivo se llame 'inventario.csv' y esté limpio como indicamos
@@ -88,39 +124,10 @@ for index, row in df_filtrado.iterrows():
                 # Creamos una nueva fila de columnas para cada grupo de tallas
                 cols = st.columns(tallas_por_fila)
                 for col_index, talla in enumerate(grupo):
-                    if not talla in row: continue # Seguridad por si una talla no existe en el df
-
                     with cols[col_index]:
-                        # Usamos un contenedor con borde para crear la "casilla"
-                        with st.container(border=True):
-                            stock_actual = int(row[talla])
-                            
-                            etiqueta_talla = talla
-                            # Lógica para formatear etiquetas de niño (se mantiene igual)
-                            if tallas_a_mostrar == tallas_nino:
-                                numero_talla = int(talla.split(' ')[1])
-                                etiqueta_talla = f"Talla {numero_talla}"
-                            
-                            # Elementos de la interfaz (se mantienen igual)
-                            # SOLUCIÓN: Usar st.empty() para crear contenedores únicos y evitar bugs de renderizado en móvil.
-                            # st.markdown no acepta el argumento 'key', por lo que esta es la forma correcta.
-                            label_placeholder = st.empty()
-                            stock_placeholder = st.empty()
-                            label_placeholder.markdown(f"<p style='text-align: center; font-weight: bold;'>{etiqueta_talla}</p>", unsafe_allow_html=True)
-                            stock_placeholder.markdown(f"<h2 style='text-align: center;'>{stock_actual}</h2>", unsafe_allow_html=True)
-                            
-                            btn_col1, btn_col2 = st.columns(2)
-                            
-                            if btn_col1.button("➕", key=f"plus-{index}-{talla}", use_container_width=True):
-                                df.loc[index, talla] = stock_actual + 1
-                                guardar_datos(df)
-                                st.rerun()
-                            
-                            if btn_col2.button("➖", key=f"minus-{index}-{talla}", use_container_width=True):
-                                if stock_actual > 0:
-                                    df.loc[index, talla] = stock_actual - 1
-                                    guardar_datos(df)
-                                    st.rerun()
+                        if talla in row:
+                            # Llamamos a nuestra nueva función de componente
+                            mostrar_tarjeta_talla(df, index, row, talla, es_nino=(tallas_a_mostrar == tallas_nino))
             
             # Stock total de este modelo específico
             stock_modelo = row[tallas_a_mostrar].sum()

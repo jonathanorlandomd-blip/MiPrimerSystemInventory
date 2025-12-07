@@ -1,15 +1,15 @@
 Modelo,Imagen,S,M,L,XL,XXL,Talla 16,Talla 18,Talla 20,Talla 22,Talla 24,Talla 26,Talla 28
-Short + Polera U,imagenes/Camiseta (4).png,0,0,0,0,0,2,2,1,2,1,0,0
-Short + Polera CC,imagenes/Camiseta (6).png,0,0,0,0,0,1,2,0,2,0,0,0
-Entrenamiento U,imagenes/Camiseta (7).png,3,3,3,2,0,0,0,0,0,0,0,0
-Centenario CC blanca,imagenes/Camiseta (3).png,3,3,0,4,1,0,0,0,0,0,0,0
-Centenario CC negra,imagenes/Camiseta (9).png,2,0,2,2,0,0,0,0,0,0,0,0
+Short + Polera U,imagenes/Camiseta (4).png,0,0,0,0,0,2,2,0,1,1,0,0
+Short + Polera CC,imagenes/Camiseta (6).png,0,0,0,0,0,1,1,1,1,0,0,0
+Entrenamiento U,imagenes/Camiseta (7).png,1,3,3,2,0,0,0,0,0,0,0,0
+Centenario CC blanca,imagenes/Camiseta (3).png,3,3,0,2,1,0,0,0,0,0,0,0
+Centenario CC negra,imagenes/Camiseta (9).png,1,0,1,2,0,0,0,0,0,0,0,0
 Local CC 25,imagenes/daae1a78.jpg,0,0,1,0,0,0,0,0,0,0,0,0
-Visita CC,imagenes/Camiseta (2).png,2,3,1,1,0,0,0,0,0,0,0,0
-Entrenamiento CC,imagenes/Camiseta (11).png,0,2,4,1,0,0,0,0,0,0,0,0
-Tercera U,imagenes/Camiseta (12).png,2,2,2,3,0,0,0,0,0,0,0,0
-Tercera CC,imagenes/Camiseta (5).png,3,3,2,2,0,0,0,0,0,0,0,0
-Chile 26,imagenes/Camiseta (8).png,3,2,3,2,0,0,0,0,0,0,0,0
-Catolica,imagenes/Camiseta (13).png,2,1,3,1,0,0,0,0,0,0,0,0
-Local U,imagenes/Camiseta (1).png,0,1,3,3,2,0,0,0,0,0,0,0
-Visita U,imagenes/Camiseta (10).png,0,2,3,2,3,0,0,0,0,0,0,0
+Visita CC,imagenes/Camiseta (2).png,1,3,1,0,0,0,0,0,0,0,0,0
+Entrenamiento CC,imagenes/Camiseta (11).png,0,1,4,0,0,0,0,0,0,0,0,0
+Tercera U,imagenes/Camiseta (12).png,2,1,0,3,0,0,0,0,0,0,0,0
+Tercera CC,imagenes/Camiseta (5).png,1,3,0,2,0,0,0,0,0,0,0,0
+Chile 26,imagenes/Camiseta (8).png,4,2,3,2,0,0,0,0,0,0,0,0
+Catolica,imagenes/Camiseta (13).png,0,1,3,1,0,0,0,0,0,0,0,0
+Local U,imagenes/Camiseta (1).png,0,1,2,3,1,0,0,0,0,0,0,0
+Visita U,imagenes/Camiseta (10).png,0,1,2,1,2,0,0,0,0,0,0,0

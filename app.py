@@ -73,62 +73,61 @@ for index, row in df_filtrado.iterrows():
             tallas_nino = ['Talla 16', 'Talla 18', 'Talla 20', 'Talla 22', 'Talla 24', 'Talla 26', 'Talla 28']
             
             # Decidimos qué grupo de tallas mostrar basado en el nombre del modelo
-            if 'Short + Polera U' in row['Modelo']:
+            if 'Short + Polera U' in row['Modelo'] or 'Short + Polera CC' in row['Modelo']:
                 tallas_a_mostrar = tallas_nino
             else:
                 tallas_a_mostrar = tallas_adulto
 
             # --- SECCIÓN INTERACTIVA DE TALLAS ---
-            # Usamos la lista de tallas correcta ('tallas_a_mostrar')
-            num_columnas_layout = 4 # Puedes ajustar este número (ej. 3 o 5)
-            layout_cols = st.columns(num_columnas_layout)
-            
-            for i, talla in enumerate(tallas_a_mostrar):
-                # Asignamos cada talla a una de las columnas de layout
-                if not talla in row: continue # Seguridad por si una talla no existe en el df
+            # --- LÓGICA DE LAYOUT MEJORADA PARA RESPONSIVIDAD MÓVIL ---
+            # Procesamos las tallas en grupos (filas) para mantener el orden en cualquier dispositivo.
+            tallas_por_fila = 3
+            grupos_de_tallas = [tallas_a_mostrar[i:i + tallas_por_fila] for i in range(0, len(tallas_a_mostrar), tallas_por_fila)]
 
-                col_actual = layout_cols[i % num_columnas_layout]
-                with col_actual:
-                    # Usamos un contenedor con borde para crear la "casilla"
-                    with st.container(border=True):
-                        stock_actual = int(row[talla])
-                        
-                        # --- LÓGICA PARA ETIQUETA DE TALLA DE NIÑO ---
-                        etiqueta_talla = talla
-                        if talla in tallas_nino:
-                            # Extraemos el número de la talla (ej. 16 de "Talla 16")
-                            numero_talla = int(talla.split(' ')[1])
-                            # Calculamos el número para el paréntesis: (16-16)+4=4, (18-16)+4=6, etc.
-                            numero_adicional = (numero_talla - 16) + 4
-                            etiqueta_talla = f"{talla} ({numero_adicional})"
-                        
-                        # Usamos HTML en markdown para centrar el texto
-                        st.markdown(f"<p style='text-align: center; font-weight: bold;'>{etiqueta_talla}</p>", unsafe_allow_html=True)
-                        
-                        # Reemplazamos st.metric con markdown para centrar el número de stock
-                        st.markdown(f"<h2 style='text-align: center;'>{stock_actual}</h2>", unsafe_allow_html=True)
-                        
-                        # Columnas para los botones, para que estén uno al lado del otro
-                        btn_col1, btn_col2 = st.columns(2)
-                        
-                        if btn_col1.button("➕", key=f"plus-{index}-{talla}", use_container_width=True):
-                            df.loc[index, talla] = stock_actual + 1
-                            guardar_datos(df)
-                            st.rerun()
-                        
-                        if btn_col2.button("➖", key=f"minus-{index}-{talla}", use_container_width=True):
-                            if stock_actual > 0:
-                                df.loc[index, talla] = stock_actual - 1
+            for grupo in grupos_de_tallas:
+                # Creamos una nueva fila de columnas para cada grupo de tallas
+                cols = st.columns(tallas_por_fila)
+                for col_index, talla in enumerate(grupo):
+                    if not talla in row: continue # Seguridad por si una talla no existe en el df
+
+                    with cols[col_index]:
+                        # Usamos un contenedor con borde para crear la "casilla"
+                        with st.container(border=True):
+                            stock_actual = int(row[talla])
+                            
+                            etiqueta_talla = talla
+                            # Lógica para formatear etiquetas de niño (se mantiene igual)
+                            if tallas_a_mostrar == tallas_nino:
+                                numero_talla = int(talla.split(' ')[1])
+                                etiqueta_talla = f"Talla {numero_talla}"
+                            
+                            # Elementos de la interfaz (se mantienen igual)
+                            # SOLUCIÓN: Usar st.empty() para crear contenedores únicos y evitar bugs de renderizado en móvil.
+                            # st.markdown no acepta el argumento 'key', por lo que esta es la forma correcta.
+                            label_placeholder = st.empty()
+                            stock_placeholder = st.empty()
+                            label_placeholder.markdown(f"<p style='text-align: center; font-weight: bold;'>{etiqueta_talla}</p>", unsafe_allow_html=True)
+                            stock_placeholder.markdown(f"<h2 style='text-align: center;'>{stock_actual}</h2>", unsafe_allow_html=True)
+                            
+                            btn_col1, btn_col2 = st.columns(2)
+                            
+                            if btn_col1.button("➕", key=f"plus-{index}-{talla}", use_container_width=True):
+                                df.loc[index, talla] = stock_actual + 1
                                 guardar_datos(df)
                                 st.rerun()
+                            
+                            if btn_col2.button("➖", key=f"minus-{index}-{talla}", use_container_width=True):
+                                if stock_actual > 0:
+                                    df.loc[index, talla] = stock_actual - 1
+                                    guardar_datos(df)
+                                    st.rerun()
             
             # Stock total de este modelo específico
             stock_modelo = row[tallas_a_mostrar].sum()
-            st.divider()
             
             # Alerta visual de stock bajo (se mantiene igual)
             st.metric("Stock Total del Modelo", int(stock_modelo))
-        
+
         st.divider()
 
 # 6. Tabla completa cruda (opcional, para ver todo junto)

@@ -11,8 +11,12 @@ st.title("👕 Gestión de Inventario de Poleras")
 # Usa los "secrets" de Streamlit para la autenticación.
 def get_gsheet_client():
     """Obtiene el cliente de gspread autenticado."""
-    # st.secrets lee las credenciales almacenadas en Streamlit Cloud
-    creds = st.secrets["gcp_service_account"]
+    # Copiamos el diccionario de credenciales de los secrets
+    creds_dict = st.secrets["gcp_service_account"].to_dict()
+    
+    # La librería de autenticación de Google no espera la clave 'sheet_name', así que la eliminamos.
+    creds = {key: value for key, value in creds_dict.items() if key != "sheet_name"}
+    
     client = Client(scope=None, config=creds)
     return client
 

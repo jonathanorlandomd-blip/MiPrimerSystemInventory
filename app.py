@@ -2,43 +2,46 @@ import streamlit as st
 import pandas as pd
 import os
 from gspread_pandas import Spread, Client
+import gspread
 
 # 1. Configuración de la página
 st.set_page_config(page_title="Inventario de Poleras", layout="wide")
 st.title("👕 Gestión de Inventario de Poleras")
 
-# --- FUNCIÓN PARA CONECTARSE A GOOGLE SHEETS ---
-# Usa los "secrets" de Streamlit para la autenticación.
+# --- CONEXIÓN A GOOGLE SHEETS (OPTIMIZADA CON CACHING) ---
+# Usamos @st.cache_resource para que la conexión se establezca una sola vez.
+@st.cache_resource
 def get_gsheet_client():
-    """Obtiene el cliente de gspread autenticado."""
-    # Copiamos el diccionario de credenciales de los secrets
-    creds_dict = st.secrets["gcp_service_account"].to_dict()
-    
-    # La librería de autenticación de Google no espera la clave 'sheet_name', así que la eliminamos.
-    creds = {key: value for key, value in creds_dict.items() if key != "sheet_name"}
-    
-    client = Client(scope=None, config=creds)
-    return client
+    """Se conecta a Google Sheets usando las credenciales de los secrets y devuelve el cliente."""
+    # Usamos gspread para la autenticación
+    sa = gspread.service_account_from_dict(st.secrets["gcp_service_account"])
+    return sa
 
-# --- FUNCIÓN PARA GUARDAR DATOS ---
-def guardar_datos(dataframe):
-    """Guarda el DataFrame en la hoja de cálculo de Google."""
-    spread = Spread(st.secrets["gcp_service_account"]["sheet_name"], client=get_gsheet_client())
-    # El parámetro sheet='Sheet1' asume que tus datos están en la primera hoja.
-    # Cámbialo si tu hoja tiene otro nombre.
-    spread.df_to_sheet(dataframe, index=False, sheet='Sheet1', replace=True)
-
-# 2. Cargar datos
-try:
-    # Conectamos con la hoja de cálculo usando el nombre que guardaremos en los secrets
-    spread = Spread(st.secrets["gcp_service_account"]["sheet_name"], client=get_gsheet_client())
-    # Leemos los datos de la primera hoja ('Sheet1') y los cargamos en un DataFrame
+# Usamos @st.cache_data para cargar los datos y guardarlos en caché.
+# El TTL (time-to-live) de 600 segundos (10 minutos) hace que los datos se recarguen
+# desde la fuente cada 10 minutos, para no sobrecargar la API.
+@st.cache_data(ttl=600)
+def load_data(_gsheet_client):
+    """Carga los datos desde la hoja de Google y los devuelve como un DataFrame."""
+    # Usamos gspread-pandas para interactuar con la hoja
+    spread = Spread(st.secrets["gcp_service_account"]["sheet_name"], client=_gsheet_client)
     df = spread.sheet_to_df(index=False, sheet='Sheet1')
-    
-    # Rellenar espacios vacíos con 0 para poder sumar
     df = df.fillna(0)
-except FileNotFoundError:
-    st.error("No se encontró el archivo de inventario. Asegúrate de cargarlo.")
+    return df
+
+# --- CARGA Y GUARDADO DE DATOS ---
+try:
+    client = get_gsheet_client()
+    df = load_data(client)
+
+    def guardar_datos(dataframe):
+        """Guarda el DataFrame en la hoja de cálculo de Google."""
+        spread = Spread(st.secrets["gcp_service_account"]["sheet_name"], client=client)
+        spread.df_to_sheet(dataframe, index=False, sheet='Sheet1', replace=True)
+        st.cache_data.clear() # Limpiamos la caché de datos para que se recarguen en el rerun
+
+except Exception as e:
+    st.error(f"Error al cargar o conectar con Google Sheets: {e}")
     st.stop()
 
 # 3. Barra lateral (Sidebar) para Filtros y Resumen

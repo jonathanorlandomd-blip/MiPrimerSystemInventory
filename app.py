@@ -14,7 +14,12 @@ st.title("👕 Gestión de Inventario de Poleras")
 def get_gsheet_client():
     """Se conecta a Google Sheets usando las credenciales de los secrets y devuelve el cliente."""
     # Usamos gspread para la autenticación
-    sa = gspread.service_account_from_dict(st.secrets["gcp_service_account"])
+    creds = st.secrets["gcp_service_account"].to_dict()
+    # La private_key en los secrets de Streamlit a veces pierde los saltos de línea.
+    # Los reconstruimos para asegurar que la autenticación funcione.
+    creds['private_key'] = creds['private_key'].replace('\\n', '\n')
+    
+    sa = gspread.service_account_from_dict(creds)
     return sa
 
 # Usamos @st.cache_data para cargar los datos y guardarlos en caché.

@@ -1,23 +1,35 @@
 import streamlit as st
 import pandas as pd
 import os
-import time
+from gspread_pandas import Spread, Client
 
 # 1. Configuración de la página
 st.set_page_config(page_title="Inventario de Poleras", layout="wide")
 st.title("👕 Gestión de Inventario de Poleras")
 
-# --- FUNCIÓN PARA GUARDAR DATOS ---
-# Es una buena práctica tener una función para guardar, así evitamos repetir código.
-def guardar_datos(dataframe):
-    """Guarda el DataFrame en el archivo CSV."""
-    dataframe.to_csv("inventario.csv", index=False)
+# --- FUNCIÓN PARA CONECTARSE A GOOGLE SHEETS ---
+# Usa los "secrets" de Streamlit para la autenticación.
+def get_gsheet_client():
+    """Obtiene el cliente de gspread autenticado."""
+    # st.secrets lee las credenciales almacenadas en Streamlit Cloud
+    creds = st.secrets["gcp_service_account"]
+    client = Client(scope=None, config=creds)
+    return client
 
+# --- FUNCIÓN PARA GUARDAR DATOS ---
+def guardar_datos(dataframe):
+    """Guarda el DataFrame en la hoja de cálculo de Google."""
+    spread = Spread(st.secrets["gcp_service_account"]["sheet_name"], client=get_gsheet_client())
+    # El parámetro sheet='Sheet1' asume que tus datos están en la primera hoja.
+    # Cámbialo si tu hoja tiene otro nombre.
+    spread.df_to_sheet(dataframe, index=False, sheet='Sheet1', replace=True)
 
 # 2. Cargar datos
-# Asegúrate de que tu archivo se llame 'inventario.csv' y esté limpio como indicamos
 try:
-    df = pd.read_csv("inventario.csv") # O usa pd.read_excel("inventario.xlsx")
+    # Conectamos con la hoja de cálculo usando el nombre que guardaremos en los secrets
+    spread = Spread(st.secrets["gcp_service_account"]["sheet_name"], client=get_gsheet_client())
+    # Leemos los datos de la primera hoja ('Sheet1') y los cargamos en un DataFrame
+    df = spread.sheet_to_df(index=False, sheet='Sheet1')
     
     # Rellenar espacios vacíos con 0 para poder sumar
     df = df.fillna(0)

@@ -1,0 +1,16 @@
+# Entornos virtuales
+# Ignora la carpeta que contiene las bibliotecas instaladas. ¡Esta es la causa de tus 7000 cambios!
+venv/
+.venv/
+
+# Archivos de caché de Python
+__pycache__/
+*.pyc
+
+# Archivos de configuración del editor/IDE (opcional, pero buena práctica)
+.vscode/
+.idea/
+
+# Archivos generados por el sistema operativo
+.DS_Store
+Thumbs.db

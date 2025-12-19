@@ -4,3 +4,4 @@ openpyxl
 numpy
 gspread
 gspread-pandas
+oauth2client

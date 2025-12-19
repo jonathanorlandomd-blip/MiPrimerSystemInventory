@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
-from gspread_pandas import Spread, Client
 import gspread
-
 # 1. Configuración de la página
 st.set_page_config(page_title="Inventario de Poleras", layout="wide")
 st.title("👕 Gestión de Inventario de Poleras")
@@ -13,13 +11,15 @@ st.title("👕 Gestión de Inventario de Poleras")
 @st.cache_resource
 def get_gsheet_client():
     """Se conecta a Google Sheets usando las credenciales de los secrets y devuelve el cliente."""
-    # Usamos gspread para la autenticación
-    creds = st.secrets["gcp_service_account"].to_dict()
-    # La private_key en los secrets de Streamlit a veces pierde los saltos de línea.
-    # Los reconstruimos para asegurar que la autenticación funcione.
-    creds['private_key'] = creds['private_key'].replace('\\n', '\n')
-    
-    sa = gspread.service_account_from_dict(creds)
+    # Extraemos las credenciales y las convertimos a un diccionario normal para poder modificarlas.
+    creds_dict = dict(st.secrets["gcp_service_account"])
+
+    # Al usar comillas simples en el .toml, la clave se lee como una cadena de texto literal.
+    # El único paso necesario es reemplazar los caracteres de escape '\\n' por saltos de línea reales.
+    creds_dict['private_key'] = creds_dict['private_key'].replace('\\n', '\n')
+
+    # Usamos gspread.service_account_from_dict, que está diseñada para tomar este diccionario.
+    sa = gspread.service_account_from_dict(creds_dict)
     return sa
 
 # Usamos @st.cache_data para cargar los datos y guardarlos en caché.
@@ -28,21 +28,28 @@ def get_gsheet_client():
 @st.cache_data(ttl=600)
 def load_data(_gsheet_client):
     """Carga los datos desde la hoja de Google y los devuelve como un DataFrame."""
-    # Usamos gspread-pandas para interactuar con la hoja
-    spread = Spread(st.secrets["gcp_service_account"]["sheet_name"], client=_gsheet_client)
-    df = spread.sheet_to_df(index=False, sheet='Sheet1')
+    # Usamos gspread directamente para abrir la hoja de cálculo y leer los datos
+    spreadsheet = _gsheet_client.open(st.secrets["gcp_service_account"]["sheet_name"])
+    worksheet = spreadsheet.sheet1 # Tomamos la primera hoja, sin importar su nombre
+    data = worksheet.get_all_records() # Obtiene los datos como una lista de diccionarios
+    df = pd.DataFrame(data)
     df = df.fillna(0)
     return df
 
 # --- CARGA Y GUARDADO DE DATOS ---
 try:
-    client = get_gsheet_client()
-    df = load_data(client)
+    gspread_client = get_gsheet_client()
+    df = load_data(gspread_client)
 
     def guardar_datos(dataframe):
         """Guarda el DataFrame en la hoja de cálculo de Google."""
-        spread = Spread(st.secrets["gcp_service_account"]["sheet_name"], client=client)
-        spread.df_to_sheet(dataframe, index=False, sheet='Sheet1', replace=True)
+        # Usamos gspread para abrir la hoja y actualizarla con los nuevos datos del DataFrame
+        spreadsheet = gspread_client.open(st.secrets["gcp_service_account"]["sheet_name"])
+        worksheet = spreadsheet.sheet1 # Tomamos la primera hoja, sin importar su nombre
+        worksheet.clear() # Borra la hoja
+        # Usamos argumentos con nombre y en el orden que la librería preferirá en el futuro
+        # (values primero) para eliminar la advertencia de depreciación.
+        worksheet.update(values=[dataframe.columns.values.tolist()] + dataframe.values.tolist(), range_name='A1')
         st.cache_data.clear() # Limpiamos la caché de datos para que se recarguen en el rerun
 
 except Exception as e:
@@ -97,7 +104,7 @@ for index, row in df_filtrado.iterrows():
             tallas_nino = ['Talla 16', 'Talla 18', 'Talla 20', 'Talla 22', 'Talla 24', 'Talla 26', 'Talla 28']
             
             # Decidimos qué grupo de tallas mostrar basado en el nombre del modelo
-            if 'Short + Polera U' in row['Modelo']:
+            if 'Short + Polera' in row['Modelo']:
                 tallas_a_mostrar = tallas_nino
             else:
                 tallas_a_mostrar = tallas_adulto

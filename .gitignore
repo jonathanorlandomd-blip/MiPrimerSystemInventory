@@ -14,3 +14,6 @@ __pycache__/
 # Archivos generados por el sistema operativo
 .DS_Store
 Thumbs.db
+
+# Ignorar la carpeta de secrets locales de Streamlit
+.streamlit/
